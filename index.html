@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lasermesserfassung</title>
+
+<!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -54,11 +57,11 @@
     transition: 0.3s;
   }
 
-  button:hover { opacity: 0.9; }
+  button:hover { opacity: .9; }
 
-  #speichern { background-color: #4CAF50; color: white; }
-  #zuruecksetzen { background-color: #f44336; color: white; }
-  #exportPDF { background-color: #2196F3; color: white; }
+  #speichern { background-color: #4CAF50; color: #fff; }
+  #zuruecksetzen { background-color: #f44336; color: #fff; }
+  #exportPDF { background-color: #2196F3; color: #fff; }
 
   table {
     width: 100%;
@@ -83,16 +86,24 @@
     top: 0;
   }
 
-  /* Autocomplete Vorschlagsliste */
+  /* ------------ Autocomplete ------------- */
+
+  .autocomplete-wrapper {
+    position: relative;
+  }
+
   .autocomplete-suggestions {
-    border: 1px solid #ccc;
-    background: white;
     position: absolute;
-    max-height: 150px;
-    overflow-y: auto;
-    z-index: 1000;
-    width: calc(100% - 20px);
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
     border-radius: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+    z-index: 9999;
+    display: none;
   }
 
   .autocomplete-suggestion {
@@ -100,8 +111,14 @@
     cursor: pointer;
   }
 
-  .autocomplete-suggestion:hover, .autocomplete-active {
+  .autocomplete-suggestion:hover,
+  .autocomplete-suggestion.active {
     background-color: #bde4ff;
+  }
+
+  .autocomplete-highlight {
+    font-weight: bold;
+    color: #0077cc;
   }
 
   /* Layout */
@@ -120,6 +137,7 @@
 <h2>Lasermessungen erfassen</h2>
 
 <form id="fahrtForm">
+
   <label>Örtlichkeit:
     <select id="oertlichkeit">
       <option value="">--Ort wählen--</option>
@@ -132,37 +150,49 @@
 
   <div class="row">
     <div class="col">
-      <label>Messorgan 1:
+      <label>Messorgan 1:</label>
+      <div class="autocomplete-wrapper">
         <input type="text" id="messorgan1" autocomplete="off">
         <div id="messorgan1Suggestions" class="autocomplete-suggestions"></div>
-      </label>
+      </div>
     </div>
 
     <div class="col">
-      <label>Messorgan 2:
+      <label>Messorgan 2:</label>
+      <div class="autocomplete-wrapper">
         <input type="text" id="messorgan2" autocomplete="off">
         <div id="messorgan2Suggestions" class="autocomplete-suggestions"></div>
-      </label>
+      </div>
     </div>
 
     <div class="col">
-      <label>Messorgan 3:
+      <label>Messorgan 3:</label>
+      <div class="autocomplete-wrapper">
         <input type="text" id="messorgan3" autocomplete="off">
         <div id="messorgan3Suggestions" class="autocomplete-suggestions"></div>
-      </label>
+      </div>
     </div>
   </div>
 
-  <label>Kennzeichen: <input type="text" id="kennzeichen" required></label>
+  <label>Kennzeichen:
+    <input type="text" id="kennzeichen" required>
+  </label>
 
   <div class="row">
     <div class="col">
-      <label>Marke: <input type="text" id="marke" autocomplete="off"></label>
-      <div id="markeSuggestions" class="autocomplete-suggestions"></div>
+      <label>Marke:</label>
+      <div class="autocomplete-wrapper">
+        <input type="text" id="marke" autocomplete="off">
+        <div id="markeSuggestions" class="autocomplete-suggestions"></div>
+      </div>
     </div>
+
     <div class="col">
-      <label>Farbe: <input type="text" id="farbe" autocomplete="off"></label>
-      <div id="farbeSuggestions" class="autocomplete-suggestions"></div>
+      <label>Farbe:</label>
+      <div class="autocomplete-wrapper">
+        <input type="text" id="farbe" autocomplete="off">
+        <div id="farbeSuggestions" class="autocomplete-suggestions"></div>
+      </div>
     </div>
   </div>
 
@@ -170,11 +200,11 @@
     <div class="col"><label>Km/h: <input type="number" id="kmh" required></label></div>
     <div class="col"><label>Meter: <input type="number" id="meter" required></label></div>
     <div class="col">
+      <label>Fahrtrichtung:
+        <select id="richtung"></select>
+      </label>
 
-   <label>Fahrtrichtung:
-    <select id="richtung"></select>
-  </label>
-      <label>Uhrzeit: 
+      <label>Uhrzeit:
         <input type="time" id="uhrzeit" required>
         <button type="button" id="jetztBtn">Jetzt</button>
       </label>
@@ -205,64 +235,64 @@
 </div>
 
 <script>
-const form = document.getElementById('fahrtForm');
-const tableBody = document.querySelector('#fahrtTable tbody');
-const fahrtListe = [];
+/* ------------------- Grundfunktionen ------------------- */
 
-// Fahrtrichtungen je Ort
+const fahrtListe = [];
+const tableBody = document.querySelector("#fahrtTable tbody");
+
+/* Fahrtrichtungen */
 const ortFahrtrichtungen = {
   "Wien 18., Hasenauerstraße": ["Türkenschanzplatz", "Gymnasiumstraße"],
   "Wien 18., Scheibenbergstraße": ["Gersthofer Straße", "Bastiengasse"],
-  "Ort B": ["Osten", "Westen"],
-  "Ort C": ["Norden", "Osten"]
+  "Wien 18., Peter-Jordan Straße": ["Gersthof", "Döbling"],
+  "Wien 18., Herbeckstraße": ["Währing", "Gerichtsgasse"]
 };
 
-const oertlichkeitDropdown = document.getElementById('oertlichkeit');
-const richtungDropdown = document.getElementById('richtung');
+const oertlichkeitDropdown = document.getElementById("oertlichkeit");
+const richtungDropdown = document.getElementById("richtung");
 
-oertlichkeitDropdown.addEventListener('change', () => {
+oertlichkeitDropdown.addEventListener("change", () => {
   const ort = oertlichkeitDropdown.value;
-  richtungDropdown.innerHTML = '';
-  if (ort && ortFahrtrichtungen[ort]) {
+  richtungDropdown.innerHTML = "";
+  if (ortFahrtrichtungen[ort]) {
     ortFahrtrichtungen[ort].forEach(r => {
-      const option = document.createElement('option');
-      option.value = r;
-      option.text = r;
-      richtungDropdown.add(option);
+      const opt = document.createElement("option");
+      opt.textContent = r;
+      richtungDropdown.appendChild(opt);
     });
   }
 });
 
-// Jetzt-Button
-document.getElementById('jetztBtn').addEventListener('click', () => {
-  const jetzt = new Date();
-  const hh = String(jetzt.getHours()).padStart(2, '0');
-  const mm = String(jetzt.getMinutes()).padStart(2, '0');
-  document.getElementById('uhrzeit').value = `${hh}:${mm}`;
+/* Jetzt-Button */
+document.getElementById("jetztBtn").addEventListener("click", () => {
+  const n = new Date();
+  document.getElementById("uhrzeit").value =
+    `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
 });
 
-// Speichern
-form.addEventListener('submit', function(e) {
+/* Speichern */
+document.getElementById("fahrtForm").addEventListener("submit", e => {
   e.preventDefault();
   const fahrt = {
-    kennzeichen: document.getElementById('kennzeichen').value,
-    marke: document.getElementById('marke').value,
-    farbe: document.getElementById('farbe').value,
-    kmh: document.getElementById('kmh').value,
-    meter: document.getElementById('meter').value,
-    uhrzeit: document.getElementById('uhrzeit').value,
-    richtung: document.getElementById('richtung').value
+    kennzeichen: kennzeichen.value,
+    marke: marke.value,
+    farbe: farbe.value,
+    kmh: kmh.value,
+    meter: meter.value,
+    uhrzeit: uhrzeit.value,
+    richtung: richtung.value
   };
   fahrtListe.push(fahrt);
   updateTable();
-  form.reset();
-  richtungDropdown.innerHTML = '';
+  e.target.reset();
+  richtungDropdown.innerHTML = "";
 });
 
+/* Tabelle aktualisieren */
 function updateTable() {
-  tableBody.innerHTML = '';
+  tableBody.innerHTML = "";
   fahrtListe.forEach(f => {
-    const row = document.createElement('tr');
+    const row = document.createElement("tr");
     row.innerHTML = `
       <td>${f.kennzeichen}</td>
       <td>${f.marke}</td>
@@ -276,109 +306,119 @@ function updateTable() {
   });
 }
 
-// Zurücksetzen
-document.getElementById('zuruecksetzen').addEventListener('click', () => {
-  form.reset();
-  richtungDropdown.innerHTML = '';
+/* Reset */
+document.getElementById("zuruecksetzen").addEventListener("click", () => {
   fahrtListe.length = 0;
   updateTable();
+  document.getElementById("fahrtForm").reset();
 });
 
-// PDF
+/* PDF */
 function generatePDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  const oert = document.getElementById('oertlichkeit').value;
-  const m1 = document.getElementById('messorgan1').value;
-  const m2 = document.getElementById('messorgan2').value;
-  const m3 = document.getElementById('messorgan3').value;
 
   doc.setFontSize(18);
   doc.text("Lasermessungen", 14, 22);
+
   doc.setFontSize(12);
   doc.text(`Erstellt: ${new Date().toLocaleString()}`, 14, 30);
-  doc.text(`Örtlichkeit: ${oert}`, 14, 40);
-  doc.text(`Messorgan 1: ${m1}`, 14, 50);
-  doc.text(`Messorgan 2: ${m2}`, 14, 60);
-  doc.text(`Messorgan 3: ${m3}`, 14, 70);
 
-  const columns = ["Kennzeichen", "Marke", "Farbe", "Km/h", "Meter", "Uhrzeit", "Fahrtrichtung"];
-  const rows = fahrtListe.map(f => [f.kennzeichen, f.marke, f.farbe, f.kmh, f.meter, f.uhrzeit, f.richtung]);
+  const columns = ["Kennzeichen","Marke","Farbe","Km/h","Meter","Uhrzeit","Fahrtrichtung"];
+  const rows = fahrtListe.map(f => [f.kennzeichen,f.marke,f.farbe,f.kmh,f.meter,f.uhrzeit,f.richtung]);
 
-  doc.autoTable({
-    startY: 80,
-    head: [columns],
-    body: rows,
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [100, 149, 237] }
-  });
-
+  doc.autoTable({ startY: 40, head: [columns], body: rows });
   return doc;
 }
 
-document.getElementById('exportPDF').addEventListener('click', () => {
+document.getElementById("exportPDF").addEventListener("click", () => {
   const doc = generatePDF();
-  const oert = document.getElementById('oertlichkeit').value;
-  const d = new Date();
-  const date = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
-  doc.save(`${date}_${oert}.pdf`);
+  doc.save("Lasermessungen.pdf");
 });
 
-// --- Autocomplete Funktion ---
-function autocomplete(inputElem, suggestionsArray, containerElem) {
-  let currentFocus = -1;
+/* ------------------- Autocomplete ------------------- */
 
-  inputElem.addEventListener('input', () => {
-    const val = inputElem.value.toLowerCase();
-    containerElem.innerHTML = '';
-    currentFocus = -1;
+function autocomplete(inputElem, suggestions) {
+  const container = inputElem.parentElement.querySelector(".autocomplete-suggestions");
+  let currentIndex = -1;
+  let debounceTimer = null;
 
-    if (val) {
-      const filtered = suggestionsArray.filter(s => s.toLowerCase().startsWith(val));
-      filtered.forEach(f => {
-        const div = document.createElement('div');
-        div.textContent = f;
-        div.classList.add('autocomplete-suggestion');
-        div.addEventListener('click', () => {
-          inputElem.value = f;
-          containerElem.style.display = 'none';
-        });
-        containerElem.appendChild(div);
+  function updateList() {
+    const val = inputElem.value.trim().toLowerCase();
+    container.innerHTML = "";
+    currentIndex = -1;
+
+    if (!val) { container.style.display = "none"; return; }
+
+    const filtered = suggestions.filter(s => s.toLowerCase().includes(val));
+    if (!filtered.length) { container.style.display = "none"; return; }
+
+    filtered.forEach((entry, index) => {
+      const div = document.createElement("div");
+      div.className = "autocomplete-suggestion";
+
+      const regex = new RegExp(`(${val})`, "ig");
+      div.innerHTML = entry.replace(regex, "<span class='autocomplete-highlight'>$1</span>");
+
+      div.addEventListener("click", () => {
+        inputElem.value = entry;
+        container.style.display = "none";
       });
-      containerElem.style.display = filtered.length ? 'block' : 'none';
-    } else {
-      containerElem.style.display = 'none';
+
+      container.appendChild(div);
+    });
+
+    container.style.display = "block";
+  }
+
+  inputElem.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(updateList, 120);
+  });
+
+  inputElem.addEventListener("keydown", (e) => {
+    const items = [...container.querySelectorAll(".autocomplete-suggestion")];
+    if (!items.length) return;
+
+    if (e.key === "ArrowDown") {
+      currentIndex = (currentIndex + 1) % items.length;
+      updateActive(items);
+      e.preventDefault();
+    }
+
+    if (e.key === "ArrowUp") {
+      currentIndex = (currentIndex - 1 + items.length) % items.length;
+      updateActive(items);
+      e.preventDefault();
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (currentIndex >= 0) items[currentIndex].click();
+    }
+
+    if (e.key === "Escape") {
+      container.style.display = "none";
     }
   });
 
-  inputElem.addEventListener('keydown', (e) => {
-    let items = containerElem.querySelectorAll('.autocomplete-suggestion');
-    if (!items) return;
-    if (e.key === 'ArrowDown') { currentFocus++; addActive(items); e.preventDefault(); }
-    else if (e.key === 'ArrowUp') { currentFocus--; addActive(items); e.preventDefault(); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (currentFocus > -1) items[currentFocus].click(); }
-  });
-
-  function addActive(items) {
-    if (!items) return;
-    removeActive(items);
-    if (currentFocus >= items.length) currentFocus = 0;
-    if (currentFocus < 0) currentFocus = items.length - 1;
-    items[currentFocus].classList.add('autocomplete-active');
+  function updateActive(items) {
+    items.forEach(i => i.classList.remove("active"));
+    if (currentIndex >= 0) items[currentIndex].classList.add("active");
   }
 
-  function removeActive(items) { items.forEach(item => item.classList.remove('autocomplete-active')); }
-
-  document.addEventListener('click', (e) => {
-    if (e.target !== inputElem) containerElem.style.display = 'none';
+  document.addEventListener("click", e => {
+    if (!inputElem.parentElement.contains(e.target)) {
+      container.style.display = "none";
+    }
   });
 }
 
-// --- Vorschlagslisten ---
-const marken = ["Volkswagen","Toyota","Mercedes","BMW","Renault","Peugeot","Škoda","Ford","Audi","Fiat","Opel/Vauxhall","Hyundai","Kia","Nissan","Seat"];
+/* ------------------- Vorschlagslisten ------------------- */
+
+const marken = ["Volkswagen","Toyota","Mercedes","BMW","Renault","Peugeot","Škoda","Ford","Audi","Fiat","Opel","Hyundai","Kia","Nissan","Seat"];
 const farben = ["Schwarz","Weiß","Silber","Grau","Blau","Rot","Grün","Gelb","Braun","Orange","Beige","Violett"];
 
-// Messorgane – kannst du beliebig erweitern!
 const messorgane = [
   "Dornstauder, Insp.",
   "Schrom, Asp.",
@@ -388,17 +428,15 @@ const messorgane = [
   "Todt, Insp.",
   "Spitzer, RvI.",
   "Veselko, RvI."
-
 ];
 
-autocomplete(document.getElementById('marke'), marken, document.getElementById('markeSuggestions'));
-autocomplete(document.getElementById('farbe'), farben, document.getElementById('farbeSuggestions'));
-autocomplete(document.getElementById('messorgan1'), messorgane, document.getElementById('messorgan1Suggestions'));
-autocomplete(document.getElementById('messorgan2'), messorgane, document.getElementById('messorgan2Suggestions'));
-autocomplete(document.getElementById('messorgan3'), messorgane, document.getElementById('messorgan3Suggestions'));
+autocomplete(document.getElementById("marke"), marken);
+autocomplete(document.getElementById("farbe"), farben);
+autocomplete(document.getElementById("messorgan1"), messorgane);
+autocomplete(document.getElementById("messorgan2"), messorgane);
+autocomplete(document.getElementById("messorgan3"), messorgane);
 
 </script>
 
 </body>
 </html>
-
