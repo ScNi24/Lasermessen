@@ -139,7 +139,7 @@
 <form id="fahrtForm">
 
   <label>Örtlichkeit:
-    <select id="oertlichkeit">
+    <select id="oertlichkeit" enterkeyhint="next">
       <option value="">--Ort wählen--</option>
       <option value="Wien 18., Hasenauerstraße">Wien 18., Hasenauerstraße</option>
       <option value="Wien 18., Scheibenbergstraße">Wien 18., Scheibenbergstraße</option>
@@ -152,7 +152,7 @@
     <div class="col">
       <label>Messorgan 1:</label>
       <div class="autocomplete-wrapper">
-        <input type="text" id="messorgan1" autocomplete="off">
+        <input type="text" id="messorgan1" autocomplete="off" enterkeyhint="next">
         <div id="messorgan1Suggestions" class="autocomplete-suggestions"></div>
       </div>
     </div>
@@ -160,7 +160,7 @@
     <div class="col">
       <label>Messorgan 2:</label>
       <div class="autocomplete-wrapper">
-        <input type="text" id="messorgan2" autocomplete="off">
+        <input type="text" id="messorgan2" autocomplete="off" enterkeyhint="next">
         <div id="messorgan2Suggestions" class="autocomplete-suggestions"></div>
       </div>
     </div>
@@ -168,21 +168,21 @@
     <div class="col">
       <label>Messorgan 3:</label>
       <div class="autocomplete-wrapper">
-        <input type="text" id="messorgan3" autocomplete="off">
+        <input type="text" id="messorgan3" autocomplete="off" enterkeyhint="next">
         <div id="messorgan3Suggestions" class="autocomplete-suggestions"></div>
       </div>
     </div>
   </div>
 
   <label>Kennzeichen:
-    <input type="text" id="kennzeichen" required>
+    <input type="text" id="kennzeichen" required enterkeyhint="next">
   </label>
 
   <div class="row">
     <div class="col">
       <label>Marke:</label>
       <div class="autocomplete-wrapper">
-        <input type="text" id="marke" autocomplete="off">
+        <input type="text" id="marke" autocomplete="off" enterkeyhint="next">
         <div id="markeSuggestions" class="autocomplete-suggestions"></div>
       </div>
     </div>
@@ -190,22 +190,34 @@
     <div class="col">
       <label>Farbe:</label>
       <div class="autocomplete-wrapper">
-        <input type="text" id="farbe" autocomplete="off">
+        <input type="text" id="farbe" autocomplete="off" enterkeyhint="next">
         <div id="farbeSuggestions" class="autocomplete-suggestions"></div>
       </div>
     </div>
   </div>
 
   <div class="row">
-    <div class="col"><label>Km/h: <input type="number" id="kmh" required></label></div>
-    <div class="col"><label>Meter: <input type="number" id="meter" required></label></div>
+    <div class="col">
+      <label>Km/h:
+        <input type="text" id="kmh" required inputmode="decimal"
+               pattern="[0-9]*[.,]?[0-9]+" enterkeyhint="next">
+      </label>
+    </div>
+
+    <div class="col">
+      <label>Meter:
+        <input type="text" id="meter" required inputmode="decimal"
+               pattern="[0-9]*[.,]?[0-9]+" enterkeyhint="next">
+      </label>
+    </div>
+
     <div class="col">
       <label>Fahrtrichtung:
-        <select id="richtung"></select>
+        <select id="richtung" enterkeyhint="next"></select>
       </label>
 
       <label>Uhrzeit:
-        <input type="time" id="uhrzeit" required>
+        <input type="time" id="uhrzeit" required enterkeyhint="done">
         <button type="button" id="jetztBtn">Jetzt</button>
       </label>
     </div>
@@ -277,8 +289,8 @@ document.getElementById("fahrtForm").addEventListener("submit", e => {
     kennzeichen: kennzeichen.value,
     marke: marke.value,
     farbe: farbe.value,
-    kmh: kmh.value,
-    meter: meter.value,
+    kmh: kmh.value.replace(",", "."),
+    meter: meter.value.replace(",", "."),
     uhrzeit: uhrzeit.value,
     richtung: richtung.value
   };
@@ -418,7 +430,6 @@ function autocomplete(inputElem, suggestions) {
 
 const marken = ["Volkswagen","Toyota","Mercedes","BMW","Renault","Peugeot","Škoda","Ford","Audi","Fiat","Opel","Hyundai","Kia","Nissan","Seat"];
 const farben = ["Schwarz","Weiß","Silber","Grau","Blau","Rot","Grün","Gelb","Braun","Orange","Beige","Violett"];
-
 const messorgane = [
   "Dornstauder, Insp.",
   "Schrom, Asp.",
@@ -435,6 +446,28 @@ autocomplete(document.getElementById("farbe"), farben);
 autocomplete(document.getElementById("messorgan1"), messorgane);
 autocomplete(document.getElementById("messorgan2"), messorgane);
 autocomplete(document.getElementById("messorgan3"), messorgane);
+
+/* ------------------- iPhone: Enter -> nächstes Feld ------------------- */
+
+const allInputs = Array.from(document.querySelectorAll("input, select"))
+  .filter(el => !el.disabled && el.type !== "hidden");
+
+allInputs.forEach((el, index) => {
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      let next = allInputs[index + 1];
+      if (!next) return;
+
+      next.focus();
+
+      if (next.select) {
+        setTimeout(() => next.select(), 10);
+      }
+    }
+  });
+});
 
 </script>
 
