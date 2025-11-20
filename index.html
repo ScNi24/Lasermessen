@@ -298,7 +298,14 @@ document.getElementById("fahrtForm").addEventListener("submit", e => {
   };
   fahrtListe.push(fahrt);
   updateTable();
-  e.target.reset();
+
+  // Nur die Eingaben für die Messungen zurücksetzen, Oertlichkeit & Messorgane bleiben
+  kennzeichen.value = "";
+  marke.value = "";
+  farbe.value = "";
+  kmh.value = "";
+  meter.value = "";
+  uhrzeit.value = "";
   richtungDropdown.innerHTML = "";
 });
 
@@ -335,28 +342,36 @@ function generatePDF() {
   doc.setFontSize(18);
   doc.text("Lasermessungen", 14, 22);
 
+  // Örtlichkeit & Messorgane oben einfügen
+  doc.setFontSize(12);
+  const oertlichkeit = document.getElementById("oertlichkeit").value || "Ort unbekannt";
+  const messorgan1 = document.getElementById("messorgan1").value || "-";
+  const messorgan2 = document.getElementById("messorgan2").value || "-";
+  const messorgan3 = document.getElementById("messorgan3").value || "-";
+
+  doc.text(`Örtlichkeit: ${oertlichkeit}`, 14, 32);
+  doc.text(`Messorgan 1: ${messorgan1}`, 14, 40);
+  doc.text(`Messorgan 2: ${messorgan2}`, 14, 48);
+  doc.text(`Messorgan 3: ${messorgan3}`, 14, 56);
+
   const columns = ["Kennzeichen","Marke","Farbe","Km/h","Meter","Uhrzeit","Fahrtrichtung"];
-  
-  // Markierung bei der Hälfte
+  const startY = 64;
   const rows = fahrtListe.map((f, i) => {
     const mark = (i === Math.floor(fahrtListe.length / 2)) ? "→" : "";
     return [f.kennzeichen,f.marke,f.farbe,f.kmh,f.meter,f.uhrzeit,f.richtung + " " + mark];
   });
 
-  doc.autoTable({ startY: 30, head: [columns], body: rows });
+  doc.autoTable({ startY, head: [columns], body: rows });
 
-  // Gesamtanzahl Fahrzeuge am Ende
-  const finalY = doc.lastAutoTable.finalY || 30;
+  const finalY = doc.lastAutoTable.finalY || startY;
   doc.setFontSize(12);
   doc.text(`Gesamtanzahl der gemessenen Fahrzeuge: ${fahrtListe.length}`, 14, finalY + 10);
 
-  // PDF-Dateiname
   const datum = new Date();
   const dd = String(datum.getDate()).padStart(2,"0");
   const mm = String(datum.getMonth()+1).padStart(2,"0");
   const yyyy = datum.getFullYear();
-  const ort = document.getElementById("oertlichkeit").value || "OrtUnbekannt";
-  const filename = `${dd}.${mm}.${yyyy}_Lasermessen_${ort}.pdf`;
+  const filename = `${dd}.${mm}.${yyyy}_Lasermessen_${oertlichkeit}.pdf`;
 
   doc.save(filename);
 }
@@ -488,5 +503,3 @@ allInputs.forEach((el, index) => {
 
 </body>
 </html>
-
-
