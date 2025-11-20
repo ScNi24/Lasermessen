@@ -258,9 +258,40 @@ function generatePDF() {
 
   const columns = ["Kennzeichen","Marke","Farbe","Km/h","Meter","Uhrzeit","Fahrtrichtung"];
   const startY = 64;
-  const rows = fahrtListe.map((f,i) => [f.kennzeichen,f.marke,f.farbe,f.kmh,f.meter,f.uhrzeit,f.richtung]);
 
-  doc.autoTable({ startY, head: [columns], body: rows });
+  // Tabellenzeilen vorbereiten und die zweite Hälfte hervorheben
+  const rows = fahrtListe.map((f, i) => {
+    const highlight = i >= Math.floor(fahrtListe.length / 2); // zweite Hälfte
+    return [{
+      content: f.kennzeichen,
+      styles: highlight ? { fillColor: [200, 230, 255] } : {}
+    },{
+      content: f.marke,
+      styles: highlight ? { fillColor: [200, 230, 255] } : {}
+    },{
+      content: f.farbe,
+      styles: highlight ? { fillColor: [200, 230, 255] } : {}
+    },{
+      content: f.kmh,
+      styles: highlight ? { fillColor: [200, 230, 255] } : {}
+    },{
+      content: f.meter,
+      styles: highlight ? { fillColor: [200, 230, 255] } : {}
+    },{
+      content: f.uhrzeit,
+      styles: highlight ? { fillColor: [200, 230, 255] } : {}
+    },{
+      content: f.richtung,
+      styles: highlight ? { fillColor: [200, 230, 255] } : {}
+    }];
+  });
+
+  doc.autoTable({
+    startY,
+    head: [columns],
+    body: rows,
+    theme: 'grid'
+  });
 
   const finalY = doc.lastAutoTable.finalY || startY;
   doc.setFontSize(12);
@@ -272,8 +303,6 @@ function generatePDF() {
   const yyyy = datum.getFullYear();
   doc.save(`${dd}.${mm}.${yyyy}_Lasermessen_${oertlichkeit}.pdf`);
 }
-
-document.getElementById("exportPDF").addEventListener("click", generatePDF);
 
 /* ------------------- Autocomplete ------------------- */
 function autocomplete(inputElem, suggestions) {
@@ -338,3 +367,4 @@ allInputs.forEach((el, index) => {
 </script>
 </body>
 </html>
+
