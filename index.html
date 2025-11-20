@@ -335,20 +335,33 @@ function generatePDF() {
   doc.setFontSize(18);
   doc.text("Lasermessungen", 14, 22);
 
-  doc.setFontSize(12);
-  doc.text(`Erstellt: ${new Date().toLocaleString()}`, 14, 30);
-
   const columns = ["Kennzeichen","Marke","Farbe","Km/h","Meter","Uhrzeit","Fahrtrichtung"];
-  const rows = fahrtListe.map(f => [f.kennzeichen,f.marke,f.farbe,f.kmh,f.meter,f.uhrzeit,f.richtung]);
+  
+  // Markierung bei der Hälfte
+  const rows = fahrtListe.map((f, i) => {
+    const mark = (i === Math.floor(fahrtListe.length / 2)) ? "→" : "";
+    return [f.kennzeichen,f.marke,f.farbe,f.kmh,f.meter,f.uhrzeit,f.richtung + " " + mark];
+  });
 
-  doc.autoTable({ startY: 40, head: [columns], body: rows });
-  return doc;
+  doc.autoTable({ startY: 30, head: [columns], body: rows });
+
+  // Gesamtanzahl Fahrzeuge am Ende
+  const finalY = doc.lastAutoTable.finalY || 30;
+  doc.setFontSize(12);
+  doc.text(`Gesamtanzahl der gemessenen Fahrzeuge: ${fahrtListe.length}`, 14, finalY + 10);
+
+  // PDF-Dateiname
+  const datum = new Date();
+  const dd = String(datum.getDate()).padStart(2,"0");
+  const mm = String(datum.getMonth()+1).padStart(2,"0");
+  const yyyy = datum.getFullYear();
+  const ort = document.getElementById("oertlichkeit").value || "OrtUnbekannt";
+  const filename = `${dd}.${mm}.${yyyy}_Lasermessen_${ort}.pdf`;
+
+  doc.save(filename);
 }
 
-document.getElementById("exportPDF").addEventListener("click", () => {
-  const doc = generatePDF();
-  doc.save("Lasermessungen.pdf");
-});
+document.getElementById("exportPDF").addEventListener("click", generatePDF);
 
 /* ------------------- Autocomplete ------------------- */
 
@@ -475,4 +488,5 @@ allInputs.forEach((el, index) => {
 
 </body>
 </html>
+
 
